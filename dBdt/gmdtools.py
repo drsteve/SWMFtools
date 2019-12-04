@@ -56,7 +56,7 @@ def plotFilledContours(mdata, pdata, addTo=None):
     minplotcol = 0.0
     skipPlot = False
     if 'Emag' in plotvar:
-        maxplotcol = 2.5
+        maxplotcol = 2.5 if 'maxplotcol' not in pdata else pdata['maxplotcol']
         colmap = 'magma_r'
         clabel = '|E| [V/km]'
     elif 'jr' in plotvar:
@@ -248,10 +248,12 @@ def readEcsv(fname):
     edata['Lon_raw'] = rawdata[:, 1]
     edata['Ee_raw'] = rawdata[:, 2]
     edata['En_raw'] = rawdata[:, 3]
-    edata['Lat'] = np.reshape(rawdata[:, 0], [80,180])[:,0]
-    edata['Lon'] = np.reshape(rawdata[:, 1], [80,180])[0,:]
-    edata['Ee'] = np.reshape(rawdata[:, 2], [80,180])
-    edata['En'] = np.reshape(rawdata[:, 3], [80,180])
+    nlat = len(set(edata['Lat_raw']))
+    nlon = len(set(edata['Lon_raw']))
+    edata['Lat'] = np.reshape(rawdata[:, 0], [nlat, nlon])[:,0]
+    edata['Lon'] = np.reshape(rawdata[:, 1], [nlat, nlon])[0,:]
+    edata['Ee'] = np.reshape(rawdata[:, 2], [nlat, nlon])
+    edata['En'] = np.reshape(rawdata[:, 3], [nlat, nlon])
     edata['Emag'] = np.sqrt(edata['Ee']**2.0 + edata['En']**2.0)
 
     return edata
@@ -264,3 +266,30 @@ def makeSymlinks(dirname, kind='dbdt'):
         os.symlink(os.path.abspath(fn), 
                    os.path.abspath(os.path.join(dirname,
                    'img{0:04d}.png'.format(idx))))
+
+
+def northAmerica(fname):
+    import matplotlib.ticker as mticker
+    from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+    #read
+    data = readEcsv(fname)
+    #setup
+    myproj = ccrs.Mercator()
+    pdata = {}
+    pdata['plotprojection']=myproj
+    pdata['plotvar']='Emag'
+    pdata['dataprojection']=ccrs.PlateCarree()
+    pdata['maxplotcol']=5
+    pdata['plotvec']='E'
+    #plot
+    fig, ax = makeMap(maptime=data.attrs['time'], projection=myproj, extent=[-140,-35,25,70])
+    plotFilledContours(data,pdata,addTo=ax)
+    plotVectors(data,pdata,addTo=ax)
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.6, linestyle='--')
+    gl.xlocator = mticker.FixedLocator([-140, -120, -100, -80, -60, -40, -20, 0])
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
+    gl.xlabels_top = False
+    gl.ylabels_right = False
+    ax.set_title(data.attrs['time'].isoformat())
+    #plt.show()
