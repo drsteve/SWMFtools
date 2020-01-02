@@ -10,7 +10,7 @@ def convertOneFile(batlname):
     data = dm.fromHDF5(batlname)
     outname = os.path.splitext(batlname)[0]
     #set output filename (will also create a folder sans extension)
-    fname = '.'.join((batlname, 'vth')) #vth is expected extension for hierarchical data sets like AMR
+    fname = '.'.join((outname, 'vth')) #vth is expected extension for hierarchical data sets like AMR
     
     #find number of refine levels and Nblocks at each level
     level = OrderedDict()
