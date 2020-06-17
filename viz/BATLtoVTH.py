@@ -18,14 +18,20 @@ import vtk
 
 
 def timeFromFilename(outname):
+    '''Get timestamp from SWMF/BATSRUS output file
+
+    Supports "_e" and "_t" naming conventions.
+    If both are present, it will use "_e" by preference.
+    Precision is currently to the nearest second.
     '''
-    '''
-    tsrch = ".*_t(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})"
-    if '_t' in outname:
-        tinfo = re.search(tsrch, outname).groups()
+    tsrch = ".*_t(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})"
+    esrch = ".*_e(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})"
+    if '_t' in outname or '_e' in outname:
+        srch = esrch if '_e' in outname else tsrch
+        tinfo = re.search(srch, outname).groups()
         tinfo = [val for val in map(int, tinfo)]
     else:
-        raise NotImplementedError('Only "_t" format times currently supported')
+        raise NotImplementedError('Only "_t" and "_e" format times are supported')
 
     dtobj = dt.datetime(*tinfo)
     return dtobj
