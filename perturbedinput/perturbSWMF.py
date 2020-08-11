@@ -1,6 +1,7 @@
 #stdlib
 import os
-import ftplib
+import requests
+import shutil
 import itertools
 import argparse
 import datetime as dt
@@ -27,13 +28,13 @@ def get_SC_OMNI(year=2000, bird='ACE', datadir='Data', force=False, verbose=Fals
         if verbose: print('Data already present for {0} in {1} - not downloading'.format(bird, year))
         return os.path.join(datadir, targ_fn)
     #now download the file and save in datadir
-    omni_ftp = 'spdf.gsfc.nasa.gov'
+    omni_https = 'spdf.gsfc.nasa.gov'
     sc_dir = 'pub/data/omni/high_res_omni/sc_specific/'
-    ftp = ftplib.FTP(omni_ftp)
-    ftp.login()
-    ftp.cwd(sc_dir)
-    with open(os.path.join(datadir, targ_fn), 'w') as ofh:
-        ftp.retrlines('RETR {0}'.format(targ_fn), lambda s, w = ofh.write: w(s + '\n'))
+    url = 'https://' + omni_https + '/' + sc_dir + '/' + targ_fn
+    r = requests.get(url, verify=False, stream=True)
+    r.raw.decode_content = True
+    with open(os.path.join(datadir, targ_fn), 'wb') as f:
+        shutil.copyfileobj(r.raw, f)
     print('Retrieved {0}'.format(targ_fn))
     return os.path.join(datadir, targ_fn)
 
