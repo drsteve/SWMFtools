@@ -8,43 +8,78 @@ class supermag_parser(object): #TODO: inherit from spacepy.datamodel.SpaceData t
     This class can be used to read data from supermag ascii files and to process the data
     """
 
-    def __init__(self,fname=None,ncol_time=6,ncol_data=7,deriv_method='difference'):
+    def __init__(self,fname=None,ncol_time=6,ncol_data=7,deriv_method='difference', legacy=False):
         if not fname is None:
-            self.read_supermag_data(fname,ncol_time=ncol_time,ncol_data=ncol_data,deriv_method=deriv_method)
+            self.read_supermag_data(fname, ncol_time=ncol_time, ncol_data=ncol_data,
+                                    deriv_method=deriv_method, legacy=legacy)
             
-        return
         
     def read_supermag_data(self, filename, ncol_time=6, ncol_data=7,
-                           critfrac=0.1, badflag=999999.0,
+                           legacy=False, critfrac=0.1, badflag=999999.0,
                            deriv_method='spectral'):
         """
         Read and parse a SuperMAG magnetometer file.
+        
+        Optional Parameters
+        -------------------
+        legacy : bool
+            For legacy SuperMag files, use True.
         """
         data = {}
         time = []
+        if legacy:
+            # Columns (after IAGA ID) for each param
+            bncol = 0
+            becol = 1
+            bzcol = 2
+            mltcol = 3
+            mlatcol = 4
+            szacol = 5
+            declcol = 6
         with open(filename,'r') as f:
             look_for_header = True
             lines=[]
-            for i,line in enumerate(f):
-                datum=line.strip()
-                if look_for_header:
-                    istat=0
+            for i, line in enumerate(f):
+                datum = line.strip()
+                if look_for_header and legacy:
+                    istat = 0
                     lines.append(datum)
                     if len(lines) > 0:
                         if len(lines[i]) > 0:
-                            if lines[i][0]=='=':
+                            if lines[i][0] == '=':
                                 opts=lines[i-1].split()
                                 for station in opts[-1].split(','):
-                                    data[station]={'time':[],'data':[]}
+                                    data[station] = {'time':[],'data':[]}
                                 look_for_header=False
+                elif look_for_header and not legacy:
+                    istat = 0
+                    lines.append(datum)
+                    print('Checking header in {}, line {}\n{}'.format(filename, i, line))
+                    if datum.startswith('Stations'):
+                        statlist = datum.split(': ')[1].split(',')
+                        for station in statlist:
+                            data[station] = {'time':[],'data':[]}
+                    if datum.startswith('Param'):
+                        paramlist = datum.split(': ')[1].split('|')
+                        paramlist = [prm.strip() for prm in paramlist]
+                        bncol = paramlist.index('Mag. Field NEZ') - 1
+                        becol = bncol + 1
+                        bzcol = bncol + 2
+                        szacol = paramlist.index('Solar Zenith Angle') - 1
+                        mlatcol = paramlist.index('Mag. Lat.') - 1
+                        mltcol = paramlist.index('MLT') - 1
+                        declcol = paramlist.index('Mag. Declination') - 1
+                        look_for_header = False
                 else:
                     line_data = datum.split()
                     if istat==0:
+                        # Line with time data and num. stations
                         tstamp = pd.Timestamp(*list(map(int,line_data[:-1])))
                         time.append(tstamp)
-                        nstat=int(line_data[-1])
+                        nstat = int(line_data[-1])
                     else:
-                        stat=line_data[0]
+                        # Line with data for a given station at one time
+                        stat = line_data[0]
                         data[stat]['time'].append(time[-1])
                         data[stat]['data'].append(np.array([list(map(float,line_data[1:]))]))
 
@@ -66,9 +101,9 @@ class supermag_parser(object): #TODO: inherit from spacepy.datamodel.SpaceData t
                         # Filter out bad data and interpolate over gaps
                         squeeze = lambda x: np.asarray(x).squeeze()
                         squeezedB = squeeze(data[key]['data'])
-                        self.station[key]['B'] = np.c_[self.bad_data_filter(squeezedB[:,0], data[key]['time']),
-                                                       self.bad_data_filter(squeezedB[:,1], data[key]['time']),
-                                                       self.bad_data_filter(squeezedB[:,2], data[key]['time'])]
+                        self.station[key]['B'] = np.c_[self.bad_data_filter(squeezedB[:,bncol], data[key]['time']),
+                                                       self.bad_data_filter(squeezedB[:,becol], data[key]['time']),
+                                                       self.bad_data_filter(squeezedB[:,bzcol], data[key]['time'])]
                         
                         B = self.station[key]['B']
                         # Calculate the time derivatives of the magnetic field
@@ -83,10 +118,10 @@ class supermag_parser(object): #TODO: inherit from spacepy.datamodel.SpaceData t
                         self.station[key]['time'] = self.time
                         self.station[key]['Bdot'] = Bdot
                         #TODO: interpolate the following onto the correct timebase
-                        self.station[key]['mlt'] = squeeze(data[key]['data'])[:,3]
-                        self.station[key]['decl'] = squeeze(data[key]['data'])[:,6]
-                        self.station[key]['mlat'] = squeeze(data[key]['data'])[0,4]
-                        self.station[key]['sza'] = squeeze(data[key]['data'])[0,5]
+                        self.station[key]['mlt'] = squeeze(data[key]['data'])[:, mltcol]
+                        self.station[key]['decl'] = squeeze(data[key]['data'])[:, declcol]
+                        self.station[key]['mlat'] = squeeze(data[key]['data'])[0, mlatcol]
+                        self.station[key]['sza'] = squeeze(data[key]['data'])[0, szacol]
                         self.station[key]['max_indices'] = [idBmax,idTmax]
                         self.station[key]['maxB'] = linalg.norm(B[idBmax,:2])
                         self.station[key]['maxBdot'] = linalg.norm(Bdot[idTmax,:2])
