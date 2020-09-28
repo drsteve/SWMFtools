@@ -54,7 +54,7 @@ class supermag_parser(object): #TODO: inherit from spacepy.datamodel.SpaceData t
                 elif look_for_header and not legacy:
                     istat = 0
                     lines.append(datum)
-                    print('Checking header in {}, line {}\n{}'.format(filename, i, line))
+                    # print('Checking header in {}, line {}\n{}'.format(filename, i, line))
                     if datum.startswith('Stations'):
                         statlist = datum.split(': ')[1].split(',')
                         for station in statlist:
