@@ -143,17 +143,17 @@ def get_OMNI(start_date, end_date, as_pandas=True):
     br['res'] = ['min']
     br['start_date'] = start_date
     br['end_date'] = end_date
-    br['vars'] = ['22', # Vx Velocity, GSE, km/s
-                  '23', # Vy Velocity, GSE, km/s
-                  '24', # Vz Velocity, GSE, km/s
-                  '14', # Bx, GSM, nT
-                  '17', # By, GSM, nT
-                  '18', # Bz, GSM, nT
-                  '25', # Proton Density, cm^{-3}
-                  '26', # Proton Temperature, K
-                  '27', # Flow pressure, nPa
-                  '38', # AL index, nT
-                  '41'] # Sym/H, nT
+    br['vars'] = ['22',  # Vx Velocity, GSE, km/s
+                  '23',  # Vy Velocity, GSE, km/s
+                  '24',  # Vz Velocity, GSE, km/s
+                  '14',  # Bx, GSM, nT
+                  '17',  # By, GSM, nT
+                  '18',  # Bz, GSM, nT
+                  '25',  # Proton Density, cm^{-3}
+                  '26',  # Proton Temperature, K
+                  '27',  # Flow pressure, nPa
+                  '38',  # AL index, nT
+                  '41']  # Sym/H, nT
 
     # submit OMNIWeb form
     resp = br.submit()
@@ -170,7 +170,7 @@ def get_OMNI(start_date, end_date, as_pandas=True):
         fmt_info = fh.readlines()
     for line in fmt_info[4:]:
         colnames.append(' '.join(line.split()[1:-1]))
-    
+
     # Read data from .lst file, format date
     df = pd.read_table(dl, header=None, delim_whitespace=True, names=colnames, parse_dates=[[0, 1, 2, 3]])
     df['date'] = df['Year_Day_Hour_Minute'].apply(lambda x: dt.datetime.strptime(x, '%Y %j %H %M'))
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     show_plot = False  # True for display, False for save to file
     save_pickle = False  # Save a pickle of Pandas dataframes
     save_data = True  # Save data to HDF5 and SWMF ImfInput
-    subset = 1#None  # Number of events (starting from end) -- None to do everything
+    subset = 1  # None  # Number of events (starting from end) -- None to do everything
 
     # default behavior is to use pandas and save to a pickle
     panda = True if save_pickle else False
@@ -237,10 +237,10 @@ if __name__ == '__main__':
     # Read Richardson-Cane data to get date ranges
     rc_data = readRC.read_list()
     n_events = len(rc_data['Epoch'])
-    
+
     # Time period before/after event to extract
-    td1 = dt.timedelta(hours=18) #12
-    td2 = dt.timedelta(hours=12) #12
+    td1 = dt.timedelta(hours=18)  # 12
+    td2 = dt.timedelta(hours=12)  # 12
 
     # Empty list to store output data frames if save_pickle is True
     df_list = []
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         end_datetime = rc_data['ICME_end'][rc_index]
         start_date = (start_datetime - td1).strftime('%Y%m%d%H')
         end_date = (end_datetime + td2).strftime('%Y%m%d%H')
-    
+
         # Save data (.lst file) and data format (.fmt file)
         df = get_OMNI(start_date, end_date, as_pandas=panda)
         # And mask fill
@@ -278,7 +278,7 @@ if __name__ == '__main__':
             fig = make_plot((start_date, end_date), (start_datetime, end_datetime), df, show=show_plot)
 
         print('Finished RC event %d of %d' % (rc_index, n_events-1))
-    
+
     if save_pickle:
         all_df = pd.concat(df_list)
         all_df.to_pickle('OMNI_rc_dataframe.pkl')
